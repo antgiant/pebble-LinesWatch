@@ -5,7 +5,7 @@
 #define MY_UUID { 0x1F, 0x8A, 0x52, 0xAB, 0x4E, 0x33, 0x42, 0x26, 0xA8, 0x9F, 0x46, 0xAB, 0x2A, 0xB5, 0x00, 0xB5 }
 PBL_APP_INFO(MY_UUID,
              "LinesWatch", "Tito",
-             2, 1, /* App version */
+             2, 2, /* App version */
              INVALID_RESOURCE,
              APP_INFO_WATCH_FACE);
 
@@ -77,8 +77,23 @@ void fill_layer(Layer *layer, GContext *ctx) {
     the screen */
 void draw_cross(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, ForegroundColor);
-    graphics_fill_rect(ctx, GRect(70, 0, 4, 168), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(0, 82, 144, 4), 0, GCornerNone);
+
+	//Main Vertical Line
+	graphics_fill_rect(ctx, GRect(70, 0, 4, 68), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(71, 68, 2, 29), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(70, 97, 4, 69), 0, GCornerNone);
+
+	//Smaller Vertical Lines
+	graphics_fill_rect(ctx, GRect(46, 68, 2, 29), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(96, 68, 2, 29), 0, GCornerNone);
+
+	//Main Horizontal Line
+	graphics_fill_rect(ctx, GRect(0, 82, 46, 4), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(98, 82, 46, 4), 0, GCornerNone);
+	
+	//Smaller Horizontal Lines
+	graphics_fill_rect(ctx, GRect(46, 68, 52, 2), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(46, 97, 52, 2), 0, GCornerNone);
 }
 
 /************/
