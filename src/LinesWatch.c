@@ -19,7 +19,7 @@ PBL_APP_INFO(MY_UUID,
 const GColor BackgroundColor = GColorBlack;
 const GColor ForegroundColor = GColorWhite;
 const int AnimationTime = 2000;
-const int MiniAnimationTime = 500;
+const int MiniAnimationTime = 4000;
 
 const GRect Points[2] = {
     ConstantGRect(33, 25, 4, 4),
@@ -302,11 +302,11 @@ void handle_tick(AppContextRef ctx, PebbleTickEvent *tickE) {
     
 	//NOTE: This is a Bit Mask Check not a and &&
 	//Secondary Note: tickE->units_changed == 0 catches initialzation tick
-  	if (tickE->units_changed == 0 || tickE->units_changed & SECOND_UNIT) {
+  	if (tickE->units_changed == 0 || tickE->units_changed & DAY_UNIT) {
 	  	// Update Seconds Layers
-		int sec = t.tm_sec;
-	   	quadrant_number(&miniquadrants[0], false, sec/10);
-	  	quadrant_number(&miniquadrants[1], false, sec%10);
+		int mon = t.tm_mday;
+	   	quadrant_number(&miniquadrants[0], false, mon/10);
+	  	quadrant_number(&miniquadrants[1], false, mon%10);
 	}
   	if (tickE->units_changed == 0 || tickE->units_changed & MINUTE_UNIT) {
   		// Update Minute Layers
@@ -332,7 +332,7 @@ void pbl_main(void *params) {
     .init_handler = &handle_init,
     .tick_info = {
       .tick_handler = &handle_tick,
-      .tick_units = MINUTE_UNIT | SECOND_UNIT
+      .tick_units = MINUTE_UNIT | DAY_UNIT
     }
 
   };
