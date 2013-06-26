@@ -19,6 +19,7 @@ PBL_APP_INFO(MY_UUID,
 const GColor BackgroundColor = GColorBlack;
 const GColor ForegroundColor = GColorWhite;
 const int AnimationTime = 2000;
+const int MiniAnimationTime = 500;
 
 const GRect Points[2] = {
     ConstantGRect(33, 25, 4, 4),
@@ -115,9 +116,18 @@ void draw_cross(Layer *layer, GContext *ctx) {
 /* SEGMENTS */
 /************/
 /* segment_show draws a segment with an animation */
-void segment_show(Quadrant *quadrant, int id) {
-    GRect visible = Segments[id].visible;
-    GRect invisible = Segments[id].invisible;
+void segment_show(Quadrant *quadrant, bool isBigQuadrant, int id) {
+	GRect visible, invisible;
+	int speed;
+	if (isBigQuadrant) {
+    	visible= Segments[id].visible;
+    	invisible = Segments[id].invisible;
+		speed = AnimationTime;
+	} else {
+    	visible = MiniSegments[id].visible;
+	    invisible = MiniSegments[id].invisible;
+		speed = MiniAnimationTime;
+	}
 
     /* Ensures the segment is not animating to prevent bugs */
     if(animation_is_scheduled(&quadrant->animations[id].animation)) {
@@ -125,15 +135,24 @@ void segment_show(Quadrant *quadrant, int id) {
     }
     
     property_animation_init_layer_frame(&quadrant->animations[id], &quadrant->segments[id], &invisible, &visible);
-    animation_set_duration(&quadrant->animations[id].animation, AnimationTime);
+    animation_set_duration(&quadrant->animations[id].animation, speed);
     animation_set_curve(&quadrant->animations[id].animation, AnimationCurveLinear);
     animation_schedule(&quadrant->animations[id].animation);
 }
 
 /* segment_hide removes a segment with an animation */
-void segment_hide(Quadrant *quadrant, int id) {
-    GRect visible = Segments[id].visible;
-    GRect invisible = Segments[id].invisible;
+void segment_hide(Quadrant *quadrant, bool isBigQuadrant, int id) {
+	GRect visible, invisible;
+	int speed;
+	if (isBigQuadrant) {
+    	visible= Segments[id].visible;
+    	invisible = Segments[id].invisible;
+		speed = AnimationTime;
+	} else {
+    	visible = MiniSegments[id].visible;
+	    invisible = MiniSegments[id].invisible;
+		speed = MiniAnimationTime;
+	}
 
     /* Ensures the segment is not animating to prevent bugs */
     if(animation_is_scheduled(&quadrant->animations[id].animation)) {
@@ -141,22 +160,22 @@ void segment_hide(Quadrant *quadrant, int id) {
     }
     
     property_animation_init_layer_frame(&quadrant->animations[id], &quadrant->segments[id], &visible, &invisible);
-    animation_set_duration(&quadrant->animations[id].animation, AnimationTime);
+    animation_set_duration(&quadrant->animations[id].animation, speed);
     animation_set_curve(&quadrant->animations[id].animation, AnimationCurveLinear);
     animation_schedule(&quadrant->animations[id].animation);
 }
 
 /* segment_draw calculates which segments need to be showed or hided.
     new is a byte, each bit of which represent one of the 8 segments */
-void segment_draw(Quadrant *quadrant, char new) {
+void segment_draw(Quadrant *quadrant, bool isBigQuadrant, char new) {
     char prev = quadrant->currentSegments;
     char compare = prev^new;
     for(int i=0; i<8; i++) {
         if(((compare & ( 1 << i )) >> i) == 0b00000001) {
             if(((new & ( 1 << i )) >> i) == 0b00000001) {
-                segment_show(quadrant, i);
+                segment_show(quadrant, isBigQuadrant, i);
             } else {
-                segment_hide(quadrant, i);
+                segment_hide(quadrant, isBigQuadrant, i);
             }
         }
     }
@@ -169,19 +188,29 @@ void segment_draw(Quadrant *quadrant, char new) {
 /*************/
 /* quadrant_init initializes the layer of a quadrant and the layers of
     its points and segments */
-void quadrant_init(Quadrant *quadrant, GRect coordinates, GContext *ctx) {
+void quadrant_init(Quadrant *quadrant, GRect coordinates, bool isBigQuadrant, GContext *ctx) {
     layer_init(&quadrant->layer, coordinates);
-
+	
     /* Two points visible for 6, 8 and 9 (always present) */
     for(int i=0; i<2; i++) {
-        layer_init(&(quadrant->points[i]), Points[i]);
+		if (isBigQuadrant) {
+	   	    layer_init(&(quadrant->points[i]), Points[i]);
+		}
+		else {
+		    layer_init(&(quadrant->points[i]), MiniPoints[i]);
+		}
         quadrant->points[i].update_proc = fill_layer;
         layer_add_child(&quadrant->layer, &(quadrant->points[i]));        
     }    
     
     /* Now we create the 8 segments, invisible */
     for(int i=0; i<8; i++) {
-        layer_init(&(quadrant->segments[i]), Segments[i].invisible);
+		if (isBigQuadrant) {
+			layer_init(&(quadrant->segments[i]), Segments[i].invisible);
+		}
+		else {
+			layer_init(&(quadrant->segments[i]), MiniSegments[i].invisible);
+		}
         quadrant->segments[i].update_proc = fill_layer;
         layer_add_child(&quadrant->layer, &(quadrant->segments[i]));
     }
@@ -191,37 +220,37 @@ void quadrant_init(Quadrant *quadrant, GRect coordinates, GContext *ctx) {
 
 /* quadrant_number calculates the segments to show for the inputted number. The
     8 segments are expressed in a byte, each bit of which represent a segment */
-void quadrant_number(Quadrant *quadrant, int number) {
+void quadrant_number(Quadrant *quadrant, bool isBigQuadrant, int number) {
     switch(number) {
         case 0:
-            segment_draw(quadrant, 0b00001000);
+            segment_draw(quadrant, isBigQuadrant, 0b00001000);
             break;
         case 1:
-            segment_draw(quadrant, 0b00001011);
+            segment_draw(quadrant, isBigQuadrant, 0b00001011);
             break;
         case 2:
-            segment_draw(quadrant, 0b10000100);
+            segment_draw(quadrant, isBigQuadrant, 0b10000100);
             break;
         case 3:
-            segment_draw(quadrant, 0b10010000);
+            segment_draw(quadrant, isBigQuadrant, 0b10010000);
             break;
         case 4:
-            segment_draw(quadrant, 0b01010010);
+            segment_draw(quadrant, isBigQuadrant, 0b01010010);
             break;
         case 5:
-            segment_draw(quadrant, 0b00110000);
+            segment_draw(quadrant, isBigQuadrant, 0b00110000);
             break;
         case 6:
-            segment_draw(quadrant, 0b00100000);
+            segment_draw(quadrant, isBigQuadrant, 0b00100000);
             break;
         case 7:
-            segment_draw(quadrant, 0b10001010);
+            segment_draw(quadrant, isBigQuadrant, 0b10001010);
             break;
         case 8:
-            segment_draw(quadrant, 0b00000000);
+            segment_draw(quadrant, isBigQuadrant, 0b00000000);
             break;
         case 9:
-            segment_draw(quadrant, 0b00010000);
+            segment_draw(quadrant, isBigQuadrant, 0b00010000);
             break;
     }
 }
@@ -244,37 +273,57 @@ void handle_init(AppContextRef ctx) {
     
     /* Quadrants */
     /* Each quarter of screen is 70x82 pixels */
-    quadrant_init(&quadrants[0], GRect(0, 0, 70, 82), ctx);
-    quadrant_init(&quadrants[1], GRect(74, 0, 70, 82), ctx);
-    quadrant_init(&quadrants[2], GRect(0, 86, 70, 82), ctx);
-    quadrant_init(&quadrants[3], GRect(74, 86, 70, 82), ctx);
+    quadrant_init(&quadrants[0], GRect(0, 0, 70, 82), true, ctx);
+    quadrant_init(&quadrants[1], GRect(74, 0, 70, 82), true, ctx);
+    quadrant_init(&quadrants[2], GRect(0, 86, 70, 82), true, ctx);
+    quadrant_init(&quadrants[3], GRect(74, 86, 70, 82), true, ctx);
     
     layer_add_child(&window.layer, &quadrants[0].layer);
     layer_add_child(&window.layer, &quadrants[1].layer);
     layer_add_child(&window.layer, &quadrants[2].layer);
     layer_add_child(&window.layer, &quadrants[3].layer);
+
+	/* Mini "Quadrants" */
+    /* Each Mini "Quadrant" is 23x27 pixels */
+    quadrant_init(&miniquadrants[0], GRect(48, 70, 23, 27), false, ctx);
+    quadrant_init(&miniquadrants[1], GRect(73, 70, 23, 27), false, ctx);
+    
+    layer_add_child(&window.layer, &miniquadrants[0].layer);
+    layer_add_child(&window.layer, &miniquadrants[1].layer);
 }
 
-/* handle_minute_tick is called at every minute/time change. It gets the hour,
+/* handle_tick is called at every time change. It gets the hour,
     minute and sends the numbers to each quadrant */
-void handle_minute_tick(AppContextRef ctx, PebbleTickEvent *tickE) {
+void handle_tick(AppContextRef ctx, PebbleTickEvent *tickE) {
     context = ctx;
 
     PblTm t;
     get_time(&t);
-    int hour, min;
-    min = t.tm_min;
-    hour = t.tm_hour;
-
-    if(!clock_is_24h_style()) {
-        hour = hour%12;
-        if(hour == 0) hour=12;
-    }
     
-    quadrant_number(&quadrants[0], hour/10);
-    quadrant_number(&quadrants[1], hour%10);
-    quadrant_number(&quadrants[2], min/10);
-    quadrant_number(&quadrants[3], min%10);
+	//NOTE: This is a Bit Mask Check not a and &&
+	//Secondary Note: tickE->units_changed == 0 catches initialzation tick
+  	if (tickE->units_changed == 0 || tickE->units_changed & SECOND_UNIT) {
+	  	// Update Seconds Layers
+		int sec = t.tm_sec;
+	   	quadrant_number(&miniquadrants[0], false, sec/10);
+	  	quadrant_number(&miniquadrants[1], false, sec%10);
+	}
+  	if (tickE->units_changed == 0 || tickE->units_changed & MINUTE_UNIT) {
+  		// Update Minute Layers
+    	int hour, min;
+    	min = t.tm_min;
+    	hour = t.tm_hour;
+
+    	if(!clock_is_24h_style()) {
+        	hour = hour%12;
+        	if(hour == 0) hour=12;
+	    }
+    
+	    quadrant_number(&quadrants[0], true, hour/10);
+	    quadrant_number(&quadrants[1], true, hour%10);
+	    quadrant_number(&quadrants[2], true, min/10);
+	    quadrant_number(&quadrants[3], true, min%10);
+	}
 }
 
 /* main pebble sets */
@@ -282,8 +331,8 @@ void pbl_main(void *params) {
   PebbleAppHandlers handlers = {
     .init_handler = &handle_init,
     .tick_info = {
-      .tick_handler = &handle_minute_tick,
-      .tick_units = MINUTE_UNIT
+      .tick_handler = &handle_tick,
+      .tick_units = MINUTE_UNIT | SECOND_UNIT
     }
 
   };
