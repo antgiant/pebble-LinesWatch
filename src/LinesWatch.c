@@ -25,6 +25,10 @@ const GRect Points[2] = {
     ConstantGRect(33, 53, 4, 4)
 };
 
+const GRect MiniPoints[2] = {
+    ConstantGRect(11, 8, 2, 2),
+    ConstantGRect(11, 17, 2, 2)
+};
 /* Each number is contained in a quadrant which has a layer (its coordinates), 
     2 permanent points and 8 possible segments. Also storing the animations
     that need to be globally accessible and the current segments byte for
@@ -38,6 +42,7 @@ typedef struct {
     char currentSegments;
 } Quadrant;
 Quadrant quadrants[4];
+Quadrant miniquadrants[2];
 
 /* Each quadrant has 8 possible segments, whose coordinates are expressed here.
     There are two coordinates for each segment : 
@@ -57,6 +62,16 @@ const Segment Segments[8] = {
     {ConstantGRect(33, 25, 37, 4), ConstantGRect(37, 25, 0, 4)},
     {ConstantGRect(33, 0, 4, 29), ConstantGRect(33, 25, 4, 0)},
     {ConstantGRect(0, 25, 37, 4), ConstantGRect(33, 25, 0, 4)}
+};
+const Segment MiniSegments[8] = {
+    {ConstantGRect(9, 0, 2, 9), ConstantGRect(9, 9, 2, 0)},
+    {ConstantGRect(11, 17, 2, 9), ConstantGRect(11, 19, 2, 0)},
+    {ConstantGRect(11, 17, 12, 2), ConstantGRect(12, 17, 0, 2)},
+    {ConstantGRect(11, 8, 2, 10), ConstantGRect(11, 17, 2, 0)},
+    {ConstantGRect(0, 17, 12, 2), ConstantGRect(11, 17, 0, 2)},
+    {ConstantGRect(11, 8, 12, 2), ConstantGRect(12, 8, 0, 2)},
+    {ConstantGRect(11, 0, 2, 9), ConstantGRect(11, 8, 2, 0)},
+    {ConstantGRect(0, 8, 12, 2), ConstantGRect(11, 8, 0, 2)}
 };
 
 /* Other globals */
