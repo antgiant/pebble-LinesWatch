@@ -8,8 +8,6 @@
     - ForegroundColor is the filling of the cross, points and segments (white)
     - AnimationTime is the duration in milliseconds of transitions (2000)
     - Points are the coordinates of the two points at of each quadrant */
-const GColor BackgroundColor = GColorBlack;
-const GColor ForegroundColor = GColorWhite;
 const int AnimationTime = 2000;
 const int MiniAnimationTime = 4000;
 
@@ -72,6 +70,8 @@ Window *window;
 Layer *cross;
 time_t current_time;
 struct tm *t;
+GColor BackgroundColor;
+GColor ForegroundColor;
 
 /*******************/
 /* GENERAL PURPOSE */
@@ -123,14 +123,14 @@ void segment_show(Quadrant *quadrant, bool isBigQuadrant, int id) {
 	}
 
     /* Ensures the segment is not animating to prevent bugs */
-    if(animation_is_scheduled(&quadrant->animations[id]->animation)) {
-        animation_unschedule(&quadrant->animations[id]->animation);
+    if(animation_is_scheduled(property_animation_get_animation(quadrant->animations[id]))) {
+        animation_unschedule(property_animation_get_animation(quadrant->animations[id]));
     }
     
     quadrant->animations[id] = property_animation_create_layer_frame(quadrant->segments[id], &invisible, &visible);
-    animation_set_duration(&quadrant->animations[id]->animation, speed);
-    animation_set_curve(&quadrant->animations[id]->animation, AnimationCurveLinear);
-    animation_schedule(&quadrant->animations[id]->animation);
+    animation_set_duration(property_animation_get_animation(quadrant->animations[id]), speed);
+    animation_set_curve(property_animation_get_animation(quadrant->animations[id]), AnimationCurveLinear);
+    animation_schedule(property_animation_get_animation(quadrant->animations[id]));
 }
 
 /* segment_hide removes a segment with an animation */
@@ -148,14 +148,14 @@ void segment_hide(Quadrant *quadrant, bool isBigQuadrant, int id) {
 	}
 
     /* Ensures the segment is not animating to prevent bugs */
-    if(animation_is_scheduled(&quadrant->animations[id]->animation)) {
-        animation_unschedule(&quadrant->animations[id]->animation);
+    if(animation_is_scheduled(property_animation_get_animation(quadrant->animations[id]))) {
+        animation_unschedule(property_animation_get_animation(quadrant->animations[id]));
     }
     
     quadrant->animations[id] = property_animation_create_layer_frame(quadrant->segments[id], &visible, &invisible);
-    animation_set_duration(&quadrant->animations[id]->animation, speed);
-    animation_set_curve(&quadrant->animations[id]->animation, AnimationCurveLinear);
-    animation_schedule(&quadrant->animations[id]->animation);
+    animation_set_duration(property_animation_get_animation(quadrant->animations[id]), speed);
+    animation_set_curve(property_animation_get_animation(quadrant->animations[id]), AnimationCurveLinear);
+    animation_schedule(property_animation_get_animation(quadrant->animations[id]));
 }
 
 /* segment_draw calculates which segments need to be showed or hided.
@@ -257,6 +257,8 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 	current_time = time(NULL);
     t = localtime(&current_time);
     
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Tick Happened");
+	
 	//NOTE: This is a Bit Mask Check not a and &&
 	//Secondary Note: tickE->units_changed == 0 catches initialzation tick
   	if (units_changed == 0 || units_changed & DAY_UNIT) {
@@ -264,6 +266,9 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 		int mon = t->tm_mday;
 	   	quadrant_number(&miniquadrants[0], false, mon/10);
 	  	quadrant_number(&miniquadrants[1], false, mon%10);
+
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Day Changed. Now %d", mon);
+	
 	}
   	if (units_changed == 0 || units_changed & MINUTE_UNIT) {
   		// Update Minute Layers
@@ -280,11 +285,18 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 	    quadrant_number(&quadrants[1], true, hour%10);
 	    quadrant_number(&quadrants[2], true, min/10);
 	    quadrant_number(&quadrants[3], true, min%10);
+	
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes Changed. Now %d", min);
+
 	}
 }
 /* handle_init is called when the watchface is loaded on screen. It initializes
     various layers for the main design */
 void handle_init(void) {
+	//Colors
+	GColor BackgroundColor = GColorBlack;
+	GColor ForegroundColor = GColorWhite;
+	
 	/* Window inits */
 	window = window_create();
 
@@ -317,8 +329,7 @@ void handle_init(void) {
     layer_add_child(window_get_root_layer(window), miniquadrants[1].layer);
 	
 	// Subscribe to TickTimerService
-  	tick_timer_service_subscribe(MINUTE_UNIT, handle_tick);
-  	tick_timer_service_subscribe(DAY_UNIT, handle_tick);
+  	tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT, handle_tick);
 }
 
 static void handle_deinit(void) {
