@@ -112,6 +112,7 @@ void draw_cross(Layer *layer, GContext *ctx) {
 void segment_show(Quadrant *quadrant, bool isBigQuadrant, int id) {
 	GRect visible, invisible;
 	int speed;
+	
 	if (isBigQuadrant) {
     	visible= Segments[id].visible;
     	invisible = Segments[id].invisible;
@@ -294,8 +295,8 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
     various layers for the main design */
 void handle_init(void) {
 	//Colors
-	GColor BackgroundColor = GColorBlack;
-	GColor ForegroundColor = GColorWhite;
+	BackgroundColor = GColorBlack;
+	ForegroundColor = GColorWhite;
 	
 	/* Window inits */
 	window = window_create();
@@ -333,8 +334,11 @@ void handle_init(void) {
 }
 
 static void handle_deinit(void) {
-  // Destroy main Window
-  window_destroy(window);
+  	// Stop any animation in progress
+  	animation_unschedule_all();
+
+	// Destroy main Window
+  	window_destroy(window);
 }
 
 /* main pebble sets */
