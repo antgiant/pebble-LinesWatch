@@ -305,16 +305,20 @@ void handle_init(void) {
     window_set_background_color(window, BackgroundColor);
     
     /* Cross */
-	cross = layer_create(GRect(0, 0, 144, 168));
+	GRect bounds = layer_get_bounds(window_get_root_layer(window));
+	cross = layer_create(bounds);
 	layer_set_update_proc(cross, draw_cross);
 	layer_add_child(window_get_root_layer(window), cross);
     
     /* Quadrants */
     /* Each quarter of screen is 70x82 pixels */
-    quadrant_init(&quadrants[0], GRect(0, 0, 70, 82), true);
-    quadrant_init(&quadrants[1], GRect(74, 0, 70, 82), true);
-    quadrant_init(&quadrants[2], GRect(0, 86, 70, 82), true);
-    quadrant_init(&quadrants[3], GRect(74, 86, 70, 82), true);
+	
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Testing things %d %d", bounds.size.w, bounds.size.h);
+	
+    quadrant_init(&quadrants[0], GRect(0, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+    quadrant_init(&quadrants[1], GRect(((bounds.size.w-4)/2)+4, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+    quadrant_init(&quadrants[2], GRect(0, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+    quadrant_init(&quadrants[3], GRect(((bounds.size.w-4)/2)+4, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
     
     layer_add_child(window_get_root_layer(window), quadrants[0].layer);
     layer_add_child(window_get_root_layer(window), quadrants[1].layer);
