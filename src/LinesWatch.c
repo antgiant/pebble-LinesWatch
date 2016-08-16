@@ -4,22 +4,11 @@
 #define ConstantGRect(x, y, w, h) {{(x), (y)}, {(w), (h)}}
 
 /* CONSTANTS
-    - BackgroundColor is the main filling (black)
-    - ForegroundColor is the filling of the cross, points and segments (white)
     - AnimationTime is the duration in milliseconds of transitions (2000)
     - Points are the coordinates of the two points at of each quadrant */
 const int AnimationTime = 2000;
 const int MiniAnimationTime = 4000;
 
-const GRect Points[2] = {
-    ConstantGRect(33, 25, 4, 4),
-    ConstantGRect(33, 53, 4, 4)
-};
-
-const GRect MiniPoints[2] = {
-    ConstantGRect(11, 8, 2, 2),
-    ConstantGRect(11, 17, 2, 2)
-};
 /* Each number is contained in a quadrant which has a layer (its coordinates), 
     2 permanent points and 8 possible segments. Also storing the animations
     that need to be globally accessible and the current segments byte for
@@ -44,6 +33,15 @@ typedef struct {
     GRect visible;
     GRect invisible;
 } Segment;
+const GRect Points[2] = {
+    ConstantGRect(33, 25, 4, 4),
+    ConstantGRect(33, 53, 4, 4)
+};
+
+const GRect MiniPoints[2] = {
+    ConstantGRect(11, 8, 2, 2),
+    ConstantGRect(11, 17, 2, 2)
+};
 const Segment Segments[8] = {
     {ConstantGRect(29, 0, 4, 29), ConstantGRect(29, 29, 4, 0)},
     {ConstantGRect(33, 53, 4, 29), ConstantGRect(33, 57, 4, 0)},
@@ -72,6 +70,7 @@ time_t current_time;
 struct tm *t;
 GColor BackgroundColor;
 GColor ForegroundColor;
+GRect bounds;
 
 /*******************/
 /* GENERAL PURPOSE */
@@ -85,24 +84,32 @@ void fill_layer(Layer *layer, GContext *ctx) {
 /* draw_cross draws the main cross (horizontal and vertical lines accross
     the screen */
 void draw_cross(Layer *layer, GContext *ctx) {
-    graphics_context_set_fill_color(ctx, ForegroundColor);
+	graphics_context_set_fill_color(ctx, ForegroundColor);
+    
+    /* Quadrants */
+	
+//    quadrant_init(&quadrants[0], GRect(0, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+//    quadrant_init(&quadrants[1], GRect(((bounds.size.w-4)/2)+4, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+//    quadrant_init(&quadrants[2], GRect(0, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+//    quadrant_init(&quadrants[3], GRect(((bounds.size.w-4)/2)+4, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
 
 	//Main Vertical Line
-	graphics_fill_rect(ctx, GRect(70, 0, 4, 68), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(71, 68, 2, 29), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(70, 97, 4, 69), 0, GCornerNone);
-
-	//Smaller Vertical Lines
-	graphics_fill_rect(ctx, GRect(46, 68, 2, 29), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(96, 68, 2, 29), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect((bounds.size.w-4)/2, 0, 4, (bounds.size.h)*.40), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(((bounds.size.w-4)/2) + 1, ((bounds.size.h)*.40), 2, ((bounds.size.h)*(1 - (.40*2))) + 1), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect((bounds.size.w-4)/2, ((bounds.size.h)*(1 - .40)), 4, (bounds.size.h)*.40), 0, GCornerNone);
 
 	//Main Horizontal Line
-	graphics_fill_rect(ctx, GRect(0, 82, 46, 4), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(98, 82, 46, 4), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(0, ((bounds.size.h)/2), ((bounds.size.w)*.30), 4), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(((bounds.size.w)*(1 - .30)), ((bounds.size.h)/2), ((bounds.size.w)*.30), 4), 0, GCornerNone);
 	
+
+	//Smaller Vertical Lines
+	graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), (bounds.size.h)*.40, 2, ((bounds.size.h)*(1 - (.40*2)) + 1)), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(((bounds.size.w)*(1 - .30)) - 1, (bounds.size.h)*.40, 2, ((bounds.size.h)*(1 - (.40*2)) + 1)), 0, GCornerNone);
+
 	//Smaller Horizontal Lines
-	graphics_fill_rect(ctx, GRect(46, 68, 52, 2), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(46, 97, 52, 2), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), (bounds.size.h)*.40, (bounds.size.w)*(1 - (.30*2)), 2), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), ((bounds.size.h)*(1 - .40)), (bounds.size.w)*(1 - (.30*2)), 2), 0, GCornerNone);
 }
 
 /************/
@@ -305,15 +312,12 @@ void handle_init(void) {
     window_set_background_color(window, BackgroundColor);
     
     /* Cross */
-	GRect bounds = layer_get_bounds(window_get_root_layer(window));
+	bounds = layer_get_bounds(window_get_root_layer(window));
 	cross = layer_create(bounds);
 	layer_set_update_proc(cross, draw_cross);
 	layer_add_child(window_get_root_layer(window), cross);
     
     /* Quadrants */
-    /* Each quarter of screen is 70x82 pixels */
-	
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Testing things %d %d", bounds.size.w, bounds.size.h);
 	
     quadrant_init(&quadrants[0], GRect(0, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
     quadrant_init(&quadrants[1], GRect(((bounds.size.w-4)/2)+4, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);

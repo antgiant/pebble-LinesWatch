@@ -1,0 +1,35 @@
+{
+    "author": "antgiant",
+    "dependencies": {},
+    "keywords": [],
+    "name": "lines-enhanced",
+    "pebble": {
+        "capabilities": [
+            ""
+        ],
+        "displayName": "Lines (Enhanced)",
+        "enableMultiJS": false,
+        "messageKeys": {},
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "data/resource_map.json",
+                    "name": "DUMMY",
+                    "type": "raw"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk"
+        ],
+        "uuid": "40ef02a4-3fea-48bf-9684-2cd098608b4a",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "3.0.0"
+}
