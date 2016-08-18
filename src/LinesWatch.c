@@ -6,8 +6,11 @@
 /* CONSTANTS
     - AnimationTime is the duration in milliseconds of transitions (2000)
     - Points are the coordinates of the two points at of each quadrant */
-const int AnimationTime = 2000;
-const int MiniAnimationTime = 4000;
+//const int AnimationTime = 2000;
+//const int MiniAnimationTime = 4000;
+
+const int AnimationTime = 500;
+const int MiniAnimationTime = 500;
 
 /* Each number is contained in a quadrant which has a layer (its coordinates), 
     2 permanent points and 8 possible segments. Also storing the animations
@@ -36,27 +39,7 @@ typedef struct {
     GRect invisible;
 } Segment;
 GRect Points[2], MiniPoints[2];
-const Segment Segments[8] = {
-    {ConstantGRect(29, 0, 4, 29), ConstantGRect(29, 29, 4, 0)},
-    {ConstantGRect(33, 53, 4, 29), ConstantGRect(33, 57, 4, 0)},
-    {ConstantGRect(33, 53, 37, 4), ConstantGRect(37, 53, 0, 4)},
-    {ConstantGRect(33, 25, 4, 32), ConstantGRect(33, 53, 4, 0)},
-    {ConstantGRect(0, 53, 37, 4), ConstantGRect(33, 53, 0, 4)},
-    {ConstantGRect(33, 25, 37, 4), ConstantGRect(37, 25, 0, 4)},
-    {ConstantGRect(33, 0, 4, 29), ConstantGRect(33, 25, 4, 0)},
-    {ConstantGRect(0, 25, 37, 4), ConstantGRect(33, 25, 0, 4)}
-};
-const Segment MiniSegments[8] = {
-    {ConstantGRect(9, 0, 2, 9), ConstantGRect(9, 9, 2, 0)},
-    {ConstantGRect(11, 17, 2, 9), ConstantGRect(11, 19, 2, 0)},
-    {ConstantGRect(11, 17, 12, 2), ConstantGRect(12, 17, 0, 2)},
-    {ConstantGRect(11, 8, 2, 10), ConstantGRect(11, 17, 2, 0)},
-    {ConstantGRect(0, 17, 12, 2), ConstantGRect(11, 17, 0, 2)},
-    {ConstantGRect(11, 8, 12, 2), ConstantGRect(12, 8, 0, 2)},
-    {ConstantGRect(11, 0, 2, 9), ConstantGRect(11, 8, 2, 0)},
-    {ConstantGRect(0, 8, 12, 2), ConstantGRect(11, 8, 0, 2)}
-};
-
+Segment Segments[8], MiniSegments[8];
 /* Other globals */
 Window *window;
 Layer *cross;
@@ -84,18 +67,18 @@ void draw_cross(Layer *layer, GContext *ctx) {
 	graphics_fill_rect(ctx, GRect(quadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine*2, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
 
 	//Main Horizontal Line
-	graphics_fill_rect(ctx, GRect(0, quadrantHeight, quadrantWidth - miniQuadrantWidth - thinLine, thickLine), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth + thinLine, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(0, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
 	
 
 	//Smaller Vertical Lines
-	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
 	graphics_fill_rect(ctx, GRect(quadrantWidth + thinLine/2, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
 
 	//Smaller Horizontal Lines
-	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine + thinLine*2, thinLine), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine + thinLine*2, thinLine), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
 }
 
 /************/
@@ -264,6 +247,19 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Day Changed. Now %d", mon);
 	
 	}
+	if (units_changed == 0 || units_changed & SECOND_UNIT) {
+	  	// Update Seconds Layers
+		int sec = t->tm_sec;
+	   	quadrant_number(&miniquadrants[0], false, sec/10);
+	  	quadrant_number(&miniquadrants[1], false, sec%10);
+		
+		//******DEBUG*******
+	    quadrant_number(&quadrants[2], true, sec/10);
+	    quadrant_number(&quadrants[3], true, sec%10);
+
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Second Changed. Now %d", sec);
+	
+	}
   	if (units_changed == 0 || units_changed & MINUTE_UNIT) {
   		// Update Minute Layers
     	int hour, min;
@@ -318,11 +314,65 @@ void handle_init(void) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantHeight = %i", miniQuadrantHeight);
     
 	/* Quadrant Animation Constants */
-	Points[0] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.31), thickLine, thickLine);
-	Points[1] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.65), thickLine, thickLine);
+    Points[0] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.31), thickLine, thickLine);
+    Points[1] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.65), thickLine, thickLine);
+    Segments[0].visible = GRect(Points[0].origin.y + thickLine, 0, thickLine, Points[0].origin.y + thickLine);
+    Segments[0].invisible = GRect(Points[0].origin.y + thickLine, Points[0].origin.y + thickLine, thickLine, 0);
+    Segments[1].visible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, Points[0].origin.y + thickLine);
+    Segments[1].invisible = GRect(Points[0].origin.x, Points[1].origin.y + thickLine, thickLine, 0);
+    Segments[2].visible = GRect(Points[0].origin.x, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[2].invisible = GRect(Points[0].origin.x + thickLine, Points[1].origin.y, 0, thickLine);
+    Segments[3].visible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, Points[1].origin.y - Points[0].origin.y);
+    Segments[3].invisible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, 0);
+    Segments[4].visible = GRect(0, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[4].invisible = GRect(Points[0].origin.x, Points[1].origin.y, 0, thickLine);
+    Segments[5].visible = GRect(Points[0].origin.x, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[5].invisible = GRect(Points[0].origin.x + thickLine, Points[0].origin.y, 0, thickLine);
+    Segments[6].visible = GRect(Points[0].origin.x, 0, thickLine, Points[0].origin.y + thickLine);
+    Segments[6].invisible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, 0);
+    Segments[7].visible = GRect(0, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[7].invisible = GRect(Points[0].origin.x, Points[0].origin.y, 0, thickLine);
+
+	/* Mini Quadrant Animation Constants */
+	MiniPoints[0] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.31), thinLine, thinLine);
+    MiniPoints[1] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.65), thinLine, thinLine);
+    MiniSegments[0].visible = GRect(MiniPoints[0].origin.y - thinLine, 0, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[0].invisible = GRect(MiniPoints[0].origin.y - thinLine, MiniPoints[0].origin.y + thinLine, thinLine, 0);
+    MiniSegments[1].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[1].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y + thinLine, thinLine, 0);
+    MiniSegments[2].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[2].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[1].origin.y, 0, thinLine);
+    MiniSegments[3].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, MiniPoints[1].origin.y - MiniPoints[0].origin.y);
+    MiniSegments[3].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, 0);
+    MiniSegments[4].visible = GRect(0, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[4].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, 0, thinLine);
+    MiniSegments[5].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[5].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[0].origin.y, 0, thinLine);
+    MiniSegments[6].visible = GRect(MiniPoints[0].origin.x, 0, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[6].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, 0);
+    MiniSegments[7].visible = GRect(0, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[7].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, 0, thinLine);
+	/*
 	MiniPoints[0] = GRect(11, 8, 2, 2);
     MiniPoints[1] = GRect(11, 17, 2, 2);
-
+	MiniSegments[0].visible = GRect(9, 0, 2, 9);
+	MiniSegments[0].invisible = GRect(9, 9, 2, 0);
+    MiniSegments[1].visible = GRect(11, 17, 2, 9);
+    MiniSegments[1].invisible = GRect(11, 19, 2, 0);
+    MiniSegments[2].visible = GRect(11, 17, 12, 2);
+    MiniSegments[2].invisible = GRect(12, 17, 0, 2);
+    MiniSegments[3].visible = GRect(11, 8, 2, 10);
+    MiniSegments[3].invisible = GRect(11, 17, 2, 0);
+    MiniSegments[4].visible = GRect(0, 17, 12, 2);
+    MiniSegments[4].invisible = GRect(11, 17, 0, 2);
+    MiniSegments[5].visible = GRect(11, 8, 12, 2);
+    MiniSegments[5].invisible = GRect(12, 8, 0, 2);
+    MiniSegments[6].visible = GRect(11, 0, 2, 9);
+    MiniSegments[6].invisible = GRect(11, 8, 2, 0);
+    MiniSegments[7].visible = GRect(0, 8, 12, 2);
+    MiniSegments[7].invisible = GRect(11, 8, 0, 2);
+	*/
+	
     /* Cross */
 	cross = layer_create(bounds);
 	layer_set_update_proc(cross, draw_cross);
@@ -330,9 +380,9 @@ void handle_init(void) {
 
     /* Quadrants */
 	quadrant_init(&quadrants[0], GRect(0, 0, quadrantWidth, quadrantHeight), true);
-    quadrant_init(&quadrants[1], GRect(quadrantWidth+4, 0, quadrantWidth, quadrantHeight), true);
-    quadrant_init(&quadrants[2], GRect(0, quadrantHeight+4, quadrantWidth, quadrantHeight), true);
-    quadrant_init(&quadrants[3], GRect(quadrantWidth+4, quadrantHeight+4, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[1], GRect(quadrantWidth + thickLine, 0, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[2], GRect(0, quadrantHeight + thickLine, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[3], GRect(quadrantWidth + thickLine, quadrantHeight + thickLine, quadrantWidth, quadrantHeight), true);
     
     layer_add_child(window_get_root_layer(window), quadrants[0].layer);
     layer_add_child(window_get_root_layer(window), quadrants[1].layer);
@@ -341,14 +391,14 @@ void handle_init(void) {
 
 	/* Mini "Quadrants" */
     /* Each Mini "Quadrant" is 23x27 pixels */
-    quadrant_init(&miniquadrants[0], GRect(48, 70, 23, 27), false);
-    quadrant_init(&miniquadrants[1], GRect(73, 70, 23, 27), false);
+    quadrant_init(&miniquadrants[0], GRect(quadrantWidth - miniQuadrantWidth + thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight), false);
+    quadrant_init(&miniquadrants[1], GRect(quadrantWidth + thickLine - (thinLine/2), quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight), false);
     
     layer_add_child(window_get_root_layer(window), miniquadrants[0].layer);
     layer_add_child(window_get_root_layer(window), miniquadrants[1].layer);
 	
 	// Subscribe to TickTimerService
-  	tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT, handle_tick);
+  	tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT|SECOND_UNIT, handle_tick);
 }
 
 static void handle_deinit(void) {
