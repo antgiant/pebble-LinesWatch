@@ -23,6 +23,8 @@ typedef struct {
 } Quadrant;
 Quadrant quadrants[4];
 Quadrant miniquadrants[2];
+/* Useful Constants*/
+int screenWidth, screenHeight, quadrantWidth, quadrantHeight, miniQuadrantWidth, miniQuadrantHeight, thickLine, thinLine;
 
 /* Each quadrant has 8 possible segments, whose coordinates are expressed here.
     There are two coordinates for each segment : 
@@ -33,15 +35,7 @@ typedef struct {
     GRect visible;
     GRect invisible;
 } Segment;
-const GRect Points[2] = {
-    ConstantGRect(33, 25, 4, 4),
-    ConstantGRect(33, 53, 4, 4)
-};
-
-const GRect MiniPoints[2] = {
-    ConstantGRect(11, 8, 2, 2),
-    ConstantGRect(11, 17, 2, 2)
-};
+GRect Points[2], MiniPoints[2];
 const Segment Segments[8] = {
     {ConstantGRect(29, 0, 4, 29), ConstantGRect(29, 29, 4, 0)},
     {ConstantGRect(33, 53, 4, 29), ConstantGRect(33, 57, 4, 0)},
@@ -70,7 +64,6 @@ time_t current_time;
 struct tm *t;
 GColor BackgroundColor;
 GColor ForegroundColor;
-GRect bounds;
 
 /*******************/
 /* GENERAL PURPOSE */
@@ -85,31 +78,24 @@ void fill_layer(Layer *layer, GContext *ctx) {
     the screen */
 void draw_cross(Layer *layer, GContext *ctx) {
 	graphics_context_set_fill_color(ctx, ForegroundColor);
-    
-    /* Quadrants */
-	
-//    quadrant_init(&quadrants[0], GRect(0, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-//    quadrant_init(&quadrants[1], GRect(((bounds.size.w-4)/2)+4, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-//    quadrant_init(&quadrants[2], GRect(0, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-//    quadrant_init(&quadrants[3], GRect(((bounds.size.w-4)/2)+4, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
 
 	//Main Vertical Line
-	graphics_fill_rect(ctx, GRect((bounds.size.w-4)/2, 0, 4, (bounds.size.h)*.40), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(((bounds.size.w-4)/2) + 1, ((bounds.size.h)*.40), 2, ((bounds.size.h)*(1 - (.40*2))) + 1), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect((bounds.size.w-4)/2, ((bounds.size.h)*(1 - .40)), 4, (bounds.size.h)*.40), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth, 0, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine*2, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
 
 	//Main Horizontal Line
-	graphics_fill_rect(ctx, GRect(0, ((bounds.size.h)/2), ((bounds.size.w)*.30), 4), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(((bounds.size.w)*(1 - .30)), ((bounds.size.h)/2), ((bounds.size.w)*.30), 4), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(0, quadrantHeight, quadrantWidth - miniQuadrantWidth - thinLine, thickLine), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth + thinLine, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
 	
 
 	//Smaller Vertical Lines
-	graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), (bounds.size.h)*.40, 2, ((bounds.size.h)*(1 - (.40*2)) + 1)), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(((bounds.size.w)*(1 - .30)) - 1, (bounds.size.h)*.40, 2, ((bounds.size.h)*(1 - (.40*2)) + 1)), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth + thinLine/2, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
 
 	//Smaller Horizontal Lines
-	graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), (bounds.size.h)*.40, (bounds.size.w)*(1 - (.30*2)), 2), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(((bounds.size.w)*.30), ((bounds.size.h)*(1 - .40)), (bounds.size.w)*(1 - (.30*2)), 2), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine + thinLine*2, thinLine), 0, GCornerNone);
+    graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth - thinLine, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine + thinLine*2, thinLine), 0, GCornerNone);
 }
 
 /************/
@@ -311,18 +297,42 @@ void handle_init(void) {
 	window_stack_push(window, true /* Animated */);
     window_set_background_color(window, BackgroundColor);
     
+    /* Set Constants*/
+	GRect bounds = layer_get_bounds(window_get_root_layer(window));
+	screenWidth = bounds.size.w;
+	screenHeight = bounds.size.h;
+	thickLine = (screenHeight*.02) + 1;
+	thinLine = (screenHeight*.01) + 1;
+	quadrantWidth = (screenWidth-thickLine)/2;
+	quadrantHeight = (screenHeight-thickLine)/2;
+	miniQuadrantWidth = (screenWidth-thickLine)/6;
+	miniQuadrantHeight = (screenHeight-thickLine)/6;
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Constants");
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenWidth = %i", screenWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenHeight = %i", screenHeight);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "thickLine = %i", thickLine);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "thinLine = %i", thinLine);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantWidth = %i", quadrantWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantHeight = %i", quadrantHeight);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantWidth = %i", miniQuadrantWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantHeight = %i", miniQuadrantHeight);
+    
+	/* Quadrant Animation Constants */
+	Points[0] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.31), thickLine, thickLine);
+	Points[1] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.65), thickLine, thickLine);
+	MiniPoints[0] = GRect(11, 8, 2, 2);
+    MiniPoints[1] = GRect(11, 17, 2, 2);
+
     /* Cross */
-	bounds = layer_get_bounds(window_get_root_layer(window));
 	cross = layer_create(bounds);
 	layer_set_update_proc(cross, draw_cross);
 	layer_add_child(window_get_root_layer(window), cross);
-    
+
     /* Quadrants */
-	
-    quadrant_init(&quadrants[0], GRect(0, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-    quadrant_init(&quadrants[1], GRect(((bounds.size.w-4)/2)+4, 0, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-    quadrant_init(&quadrants[2], GRect(0, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
-    quadrant_init(&quadrants[3], GRect(((bounds.size.w-4)/2)+4, ((bounds.size.h-4)/2)+4, (bounds.size.w-4)/2, (bounds.size.h-4)/2), true);
+	quadrant_init(&quadrants[0], GRect(0, 0, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[1], GRect(quadrantWidth+4, 0, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[2], GRect(0, quadrantHeight+4, quadrantWidth, quadrantHeight), true);
+    quadrant_init(&quadrants[3], GRect(quadrantWidth+4, quadrantHeight+4, quadrantWidth, quadrantHeight), true);
     
     layer_add_child(window_get_root_layer(window), quadrants[0].layer);
     layer_add_child(window_get_root_layer(window), quadrants[1].layer);
