@@ -1,15 +1,22 @@
 {
     "author": "antgiant",
-    "dependencies": {},
+    "dependencies": {
+        "pebble-clay": "^1.0.0"
+    },
     "keywords": [],
     "name": "lines-enhanced",
     "pebble": {
         "capabilities": [
-            ""
+            "configurable"
         ],
         "displayName": "Lines (Enhanced)",
-        "enableMultiJS": false,
-        "messageKeys": {},
+        "enableMultiJS": true,
+        "messageKeys": [
+            "watch_style",
+            "background_color",
+            "foreground_color",
+            "config_version"
+        ],
         "projectType": "native",
         "resources": {
             "media": [

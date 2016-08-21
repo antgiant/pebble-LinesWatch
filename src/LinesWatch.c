@@ -1,13 +1,15 @@
 #include <pebble.h>
 #include <time.h>
 
-#define ConstantGRect(x, y, w, h) {{(x), (y)}, {(w), (h)}}
-
 /* CONSTANTS
     - AnimationTime is the duration in milliseconds of transitions (2000)
     - Points are the coordinates of the two points at of each quadrant */
-const int AnimationTime = 2000;
-const int MiniAnimationTime = 4000;
+int AnimationTime = 2000;
+int MiniAnimationTime = 4000;
+
+//Last number is the max # of integers to be passed
+#define INBOX_SIZE  (1 + (7+4) * 3)
+#define OUTBOX_SIZE (1 + (7+4) * 3)
 
 /* Each number is contained in a quadrant which has a layer (its coordinates), 
     2 permanent points and 8 possible segments. Also storing the animations
@@ -42,12 +44,131 @@ Window *window;
 Layer *cross;
 time_t current_time;
 struct tm *t;
-GColor BackgroundColor;
-GColor ForegroundColor;
+GColor BackgroundColor, ForegroundColor;
+enum WatchStyles {
+	ORIGINAL,
+	ORIGINAL_DATE,
+	ORIGINAL_SECONDS,
+};
+int watch_style = ORIGINAL_DATE;
+bool reset_timers = false;
 
 /*******************/
 /* GENERAL PURPOSE */
 /*******************/
+//Function declaration so that next function can use it.
+void handle_tick(struct tm *tickE, TimeUnits units_changed);
+
+void set_watch_style(bool first_run){
+	switch(watch_style) {
+		case ORIGINAL:
+			if (!first_run) {
+				layer_set_hidden(miniquadrants[0].layer, true);
+				layer_set_hidden(miniquadrants[1].layer, true);
+			}
+			tick_timer_service_unsubscribe();
+			tick_timer_service_subscribe(HOUR_UNIT|MINUTE_UNIT, handle_tick);
+			break;
+		case ORIGINAL_DATE:
+			MiniAnimationTime = 4000;
+			if (!first_run) {
+				layer_set_hidden(miniquadrants[0].layer, false);
+				layer_set_hidden(miniquadrants[1].layer, false);
+			}
+			tick_timer_service_unsubscribe();
+			tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT, handle_tick);
+			break;
+		case ORIGINAL_SECONDS:
+			MiniAnimationTime = 500;
+			if (!first_run) {
+				layer_set_hidden(miniquadrants[0].layer, false);
+				layer_set_hidden(miniquadrants[1].layer, false);
+			}
+			tick_timer_service_unsubscribe();
+			tick_timer_service_subscribe(HOUR_UNIT|MINUTE_UNIT|SECOND_UNIT, handle_tick);
+			break;
+	}
+
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Changed watch style. (%i)", watch_style);
+}
+
+void load_saved_config_options() {
+	int current_version = 1;
+	int saved_version;
+	if (persist_exists(MESSAGE_KEY_config_version)) {
+		saved_version = persist_read_int(MESSAGE_KEY_config_version);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded Config Version (%i)", saved_version);	
+	} else {
+		saved_version = current_version;
+		persist_write_int(MESSAGE_KEY_config_version, saved_version);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved config version to persistent storage.");
+	}
+	if (saved_version < current_version) {
+		//Deal with old data
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Upgrading Config data");	
+	}
+	else if (saved_version > current_version) {
+		//Use default vaules as the data is from the future
+		watch_style = ORIGINAL_DATE; //Default to Original plus Date 
+		BackgroundColor = GColorBlack; //Default to black background color 
+		ForegroundColor = GColorWhite; 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Using defaults as config data is from the future");	
+	}
+	
+	if (persist_exists(MESSAGE_KEY_watch_style)) {
+		watch_style = persist_read_int(MESSAGE_KEY_watch_style); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded watch style from watch storage. (%i)", watch_style);
+		set_watch_style(true);
+	} else {
+		watch_style = 1; //Default to Original plus Date 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch style. (No saved settings).");
+	}
+	
+	if (persist_exists(MESSAGE_KEY_background_color)) {
+		BackgroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_background_color)); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded background color from watch storage., (%X)", BackgroundColor.argb);
+	} else {
+		BackgroundColor = GColorBlack; //Default to black background color 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch background color. (No saved settings).");
+	}
+	
+	if (persist_exists(MESSAGE_KEY_foreground_color)) {
+		ForegroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_foreground_color)); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded foreground color from watch storage., (%X)", ForegroundColor.argb);
+	} else {
+		ForegroundColor = GColorWhite; //Default to white foreground color 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch foreground color. (No saved settings).");
+	}	
+}
+
+void handle_appmessage_receive(DictionaryIterator *iter, void *context) {
+	// Read watch style preferences
+	Tuple *tuple = dict_find(iter, MESSAGE_KEY_watch_style);
+	if(tuple) {
+		watch_style = atoi(tuple->value->cstring);
+		persist_write_int(MESSAGE_KEY_watch_style, atoi(tuple->value->cstring));
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Watch Style (%i).", watch_style);
+		set_watch_style(false);
+	}
+	// Read Background Color preferences
+	tuple = dict_find(iter, MESSAGE_KEY_background_color);
+	if(tuple) {
+		BackgroundColor = GColorFromHEX(tuple->value->int32);
+		persist_write_int(MESSAGE_KEY_background_color, tuple->value->int32);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Background Color (%X).", BackgroundColor.argb);
+		window_set_background_color(window, BackgroundColor);
+	}
+	// Read Foreground Color preferences
+	tuple = dict_find(iter, MESSAGE_KEY_foreground_color);
+	if(tuple) {
+		ForegroundColor = GColorFromHEX(tuple->value->int32);
+		persist_write_int(MESSAGE_KEY_foreground_color, tuple->value->int32);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Foreground Color (%X).", ForegroundColor.argb);
+		layer_mark_dirty(window_get_root_layer(window));
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Completed processing config data");
+}
+
 /* fill_layer ensures that a layer is always filled with the ForegroundColor */
 void fill_layer(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, ForegroundColor);
@@ -59,23 +180,35 @@ void fill_layer(Layer *layer, GContext *ctx) {
 void draw_cross(Layer *layer, GContext *ctx) {
 	graphics_context_set_fill_color(ctx, ForegroundColor);
 
-	//Main Vertical Line
-	graphics_fill_rect(ctx, GRect(quadrantWidth, 0, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(quadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine*2, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
+	switch (watch_style) {
+		case ORIGINAL:
+			//Main Vertical Line
+			graphics_fill_rect(ctx, GRect(quadrantWidth, 0, thickLine, screenHeight), 0, GCornerNone);
 
-	//Main Horizontal Line
-	graphics_fill_rect(ctx, GRect(0, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
-	
+			//Main Horizontal Line
+			graphics_fill_rect(ctx, GRect(0, quadrantHeight, screenWidth, thickLine), 0, GCornerNone);
+			break;
+		case ORIGINAL_DATE:
+		case ORIGINAL_SECONDS:
+			//Main Vertical Line
+			graphics_fill_rect(ctx, GRect(quadrantWidth, 0, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(quadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine*2, thickLine, quadrantHeight - (miniQuadrantHeight/2)), 0, GCornerNone);
 
-	//Smaller Vertical Lines
-	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(quadrantWidth + thinLine/2, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
-	graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+			//Main Horizontal Line
+			graphics_fill_rect(ctx, GRect(0, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth, quadrantHeight, quadrantWidth - miniQuadrantWidth, thickLine), 0, GCornerNone);
 
-	//Smaller Horizontal Lines
-	graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
-    graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
+
+			//Smaller Vertical Lines
+			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(quadrantWidth + thinLine/2, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
+
+			//Smaller Horizontal Lines
+			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
+			break;
+	}
 }
 
 /************/
@@ -87,7 +220,7 @@ void segment_show(Quadrant *quadrant, bool isBigQuadrant, int id) {
 	int speed;
 	
 	if (isBigQuadrant) {
-    	visible= Segments[id].visible;
+    	visible = Segments[id].visible;
     	invisible = Segments[id].invisible;
 		speed = AnimationTime;
 	} else {
@@ -225,8 +358,8 @@ void quadrant_number(Quadrant *quadrant, bool isBigQuadrant, int number) {
 /****************/
 /* MAIN METHODS */
 /****************/
-/* handle_tick is called at every time change. It gets the hour,
-    minute and sends the numbers to each quadrant */
+/* handle_tick is called at every time change. It gets the values
+    to the correct quadrants */
 void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 	current_time = time(NULL);
     t = localtime(&current_time);
@@ -235,19 +368,17 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
 	
 	//NOTE: This is a Bit Mask Check not a and &&
 	//Secondary Note: tickE->units_changed == 0 catches initialzation tick
-  	if (units_changed == 0 || units_changed & DAY_UNIT) {
-	  	// Update Seconds Layers
-		int mon = t->tm_mday;
-	   	quadrant_number(&miniquadrants[0], false, mon/10);
-	  	quadrant_number(&miniquadrants[1], false, mon%10);
+  	if (watch_style == ORIGINAL_DATE && (units_changed == 0 || units_changed & DAY_UNIT)) {
+	  	// Update Mini Quadrant Layers
+		int day = t->tm_mday;
+	   	quadrant_number(&miniquadrants[0], false, day/10);
+	  	quadrant_number(&miniquadrants[1], false, day%10);
 
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Day Changed. Now %d", mon);
-	
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Day Changed. Now %d", day);
 	}
-  	if (units_changed == 0 || units_changed & MINUTE_UNIT) {
-  		// Update Minute Layers
-    	int hour, min;
-    	min = t->tm_min;
+  	if (units_changed == 0 || units_changed & HOUR_UNIT) {
+  		// Update Quadrant Layers
+    	int hour;
     	hour = t->tm_hour;
 
     	if(!clock_is_24h_style()) {
@@ -257,20 +388,38 @@ void handle_tick(struct tm *tickE, TimeUnits units_changed) {
     
 	    quadrant_number(&quadrants[0], true, hour/10);
 	    quadrant_number(&quadrants[1], true, hour%10);
-	    quadrant_number(&quadrants[2], true, min/10);
+	
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Hour Changed. Now %d", hour);
+	}
+  	if (units_changed == 0 || units_changed & MINUTE_UNIT) {
+  		// Update Quadrants Layers
+    	int min;
+    	min = t->tm_min;
+
+		quadrant_number(&quadrants[2], true, min/10);
 	    quadrant_number(&quadrants[3], true, min%10);
 	
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Minutes Changed. Now %d", min);
+	}
+  	if (watch_style == ORIGINAL_SECONDS && (units_changed == 0 || units_changed & SECOND_UNIT)) {
+	  	// Update Mini Quadrant Layers
+		int sec;
+    	sec = t->tm_sec;
 
+	   	quadrant_number(&miniquadrants[0], false, sec/10);
+	  	quadrant_number(&miniquadrants[1], false, sec%10);
+	
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Seconds Changed. Now %d", sec);
 	}
 }
+
 /* handle_init is called when the watchface is loaded on screen. It initializes
     various layers for the main design */
 void handle_init(void) {
-	//Colors
-	BackgroundColor = GColorBlack;
-	ForegroundColor = GColorWhite;
-	
+	load_saved_config_options();
+	app_message_register_inbox_received(&handle_appmessage_receive);
+	app_message_open(INBOX_SIZE, OUTBOX_SIZE);
+
 	/* Window inits */
 	window = window_create();
 
@@ -354,15 +503,26 @@ void handle_init(void) {
     layer_add_child(window_get_root_layer(window), quadrants[3].layer);
 
 	/* Mini "Quadrants" */
-    /* Each Mini "Quadrant" is 23x27 pixels */
     quadrant_init(&miniquadrants[0], GRect(quadrantWidth - miniQuadrantWidth + thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight), false);
     quadrant_init(&miniquadrants[1], GRect(quadrantWidth + thickLine - (thinLine/2), quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight), false);
     
     layer_add_child(window_get_root_layer(window), miniquadrants[0].layer);
     layer_add_child(window_get_root_layer(window), miniquadrants[1].layer);
 	
-	// Subscribe to TickTimerService
-  	tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT, handle_tick);
+	// Setup timer triggers
+	switch(watch_style) {
+		case ORIGINAL:
+			layer_set_hidden(miniquadrants[0].layer, true);
+			layer_set_hidden(miniquadrants[1].layer, true);
+			tick_timer_service_subscribe(HOUR_UNIT|MINUTE_UNIT, handle_tick);
+			break;
+		case ORIGINAL_DATE:
+			tick_timer_service_subscribe(DAY_UNIT|HOUR_UNIT|MINUTE_UNIT, handle_tick);
+			break;
+		case ORIGINAL_SECONDS:
+			tick_timer_service_subscribe(HOUR_UNIT|MINUTE_UNIT|SECOND_UNIT, handle_tick);
+			break;
+	}
 }
 
 static void handle_deinit(void) {
