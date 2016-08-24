@@ -15,7 +15,10 @@
             "watch_style",
             "background_color",
             "foreground_color",
-            "config_version"
+            "config_version",
+            "big_animation_speed",
+            "seconds_animation_speed",
+            "date_animation_speed"
         ],
         "projectType": "native",
         "resources": {
@@ -38,5 +41,5 @@
             "watchface": true
         }
     },
-    "version": "3.0.0"
+    "version": "3.1.0"
 }
