@@ -30,7 +30,7 @@ module.exports = [
 	  "type": "color",
 	  "messageKey": "foreground_color",
 	  "defaultValue": "ffffff",
-	  "label": "Foreground Color",
+	  "label": "Line Color",
 	  "sunlight": true
 	},
 	{
