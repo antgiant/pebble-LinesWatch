@@ -24,6 +24,13 @@
         "resources": {
             "media": [
                 {
+                    "file": "images/menu",
+                    "menuIcon": true,
+                    "name": "IMAGE_MENU",
+                    "targetPlatforms": null,
+                    "type": "png"
+                },
+                {
                     "file": "data/resource_map.json",
                     "name": "DUMMY",
                     "type": "raw"
