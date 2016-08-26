@@ -217,9 +217,11 @@ void load_saved_config_options() {
 	}
 	
 	//Config is now up to date use handle_appmessage_receive to load the default values
-	DictionaryIterator *iter = NULL;
+	DictionaryIterator iter;
+	uint8_t buffer[INBOX_SIZE];
+	dict_write_begin(&iter, buffer, sizeof(buffer));
 	void *context = NULL;
-	handle_appmessage_receive(iter, context);
+	handle_appmessage_receive(&iter, context);
 	
 }
 
