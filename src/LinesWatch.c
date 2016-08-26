@@ -1,11 +1,6 @@
 #include <pebble.h>
 #include <time.h>
 
-/* CONSTANTS
-    - AnimationTime is the duration in milliseconds of transitions (2000)
-    - Points are the coordinates of the two points at of each quadrant */
-int AnimationTime, MiniAnimationTime;
-
 //Last number is the max # of integers to be passed
 #define INBOX_SIZE  (1 + (7+4) * 6)
 #define OUTBOX_SIZE (1 + (7+4) * 6)
@@ -25,7 +20,7 @@ typedef struct {
 Quadrant quadrants[4];
 Quadrant miniquadrants[2];
 /* Useful Constants*/
-int screenWidth, screenHeight, quadrantWidth, quadrantHeight, miniQuadrantWidth, miniQuadrantHeight, thickLine, thinLine;
+int screenWidth, screenHeight, quadrantWidth, quadrantHeight, miniQuadrantWidth, miniQuadrantHeight, thickLine, thinLine, AnimationTime, MiniAnimationTime;
 
 /* Each quadrant has 8 possible segments, whose coordinates are expressed here.
     There are two coordinates for each segment : 
@@ -51,6 +46,7 @@ enum WatchStyles {
 };
 int watch_style = ORIGINAL_DATE;
 bool reset_timers = false;
+bool first_run = true;
 
 /*******************/
 /* GENERAL PURPOSE */
@@ -58,7 +54,7 @@ bool reset_timers = false;
 //Function declaration so that next function can use it.
 void handle_tick(struct tm *tickE, TimeUnits units_changed);
 
-void set_watch_style(bool first_run){
+void set_watch_style(){
 	switch(watch_style) {
 		case ORIGINAL:
 			if (!first_run) {
@@ -85,8 +81,110 @@ void set_watch_style(bool first_run){
 			tick_timer_service_subscribe(HOUR_UNIT|MINUTE_UNIT|SECOND_UNIT, handle_tick);
 			break;
 	}
+	
+	if (first_run) {
+		first_run = false;
+	}
 
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Changed watch style. (%i)", watch_style);
+}
+
+void handle_appmessage_receive(DictionaryIterator *iter, void *context) {
+	// Read watch style preference
+	Tuple *tuple = dict_find(iter, MESSAGE_KEY_watch_style);
+	if(tuple) {
+		watch_style = atoi(tuple->value->cstring);
+		persist_write_int(MESSAGE_KEY_watch_style, atoi(tuple->value->cstring));
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Watch Style (%i).", watch_style);
+		set_watch_style();
+	} else if (persist_exists(MESSAGE_KEY_watch_style)) {
+		watch_style = persist_read_int(MESSAGE_KEY_watch_style); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded watch style from watch storage. (%i)", watch_style);
+		set_watch_style();
+	} else {
+		watch_style = 1; //Default to Original plus Date 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch style. (No saved settings).");
+	}
+	
+	// Read Background Color preference
+	tuple = dict_find(iter, MESSAGE_KEY_background_color);
+	if(tuple) {
+		BackgroundColor = GColorFromHEX(tuple->value->int32);
+		persist_write_int(MESSAGE_KEY_background_color, tuple->value->int32);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Background Color (%X).", BackgroundColor.argb);
+		window_set_background_color(window, BackgroundColor);
+	} else if (persist_exists(MESSAGE_KEY_background_color)) {
+		BackgroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_background_color)); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded background color from watch storage., (%X)", BackgroundColor.argb);
+	} else {
+		BackgroundColor = GColorBlack; //Default to black background color 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch background color. (No saved settings).");
+	}
+		
+	// Read Foreground Color preference
+	tuple = dict_find(iter, MESSAGE_KEY_foreground_color);
+	if(tuple) {
+		ForegroundColor = GColorFromHEX(tuple->value->int32);
+		persist_write_int(MESSAGE_KEY_foreground_color, tuple->value->int32);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Foreground Color (%X).", ForegroundColor.argb);
+		layer_mark_dirty(window_get_root_layer(window));
+	} else if (persist_exists(MESSAGE_KEY_foreground_color)) {
+		ForegroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_foreground_color)); 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded foreground color from watch storage., (%X)", ForegroundColor.argb);
+	} else {
+		ForegroundColor = GColorWhite; //Default to white foreground color 
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch foreground color. (No saved settings).");
+	}	
+	
+	// Read big number animation speed preference
+	tuple = dict_find(iter, MESSAGE_KEY_big_animation_speed);
+	if(tuple) {
+		AnimationTime = tuple->value->int32 * 500; //Slider moves in half second increments
+		persist_write_int(MESSAGE_KEY_big_animation_speed, AnimationTime);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new big number animation speed (%i).", AnimationTime);
+	} else if (persist_exists(MESSAGE_KEY_big_animation_speed)) {
+		AnimationTime = persist_read_int(MESSAGE_KEY_big_animation_speed);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded big number animation speed from watch storage. (%i)", AnimationTime);
+	} else {
+		AnimationTime = 2000; //Default to 2 second animation speed
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default big number animation speed (%i). (No saved settings).", AnimationTime);
+	}
+	
+	int temp;
+	// Read date animation speed preference
+	tuple = dict_find(iter, MESSAGE_KEY_date_animation_speed);
+	if(tuple) {
+		temp = tuple->value->int32 * 500; //Slider moves in half second increments
+		if(watch_style == ORIGINAL_DATE) {
+			MiniAnimationTime = temp;
+		}
+		persist_write_int(MESSAGE_KEY_date_animation_speed, temp);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new date animation speed (%i).", temp);
+	} else if (watch_style == ORIGINAL_DATE && persist_exists(MESSAGE_KEY_date_animation_speed)) {
+		MiniAnimationTime = persist_read_int(MESSAGE_KEY_date_animation_speed);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded date animation speed from watch storage. (%i)", MiniAnimationTime);
+	} else if (watch_style == ORIGINAL_DATE) {
+		MiniAnimationTime = 4000; //Default to 4 second animation speed
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded seconds animation speed (%i). (No saved settings).", MiniAnimationTime);
+	}
+	
+	// Read seconds animation speed preference
+	tuple = dict_find(iter, MESSAGE_KEY_seconds_animation_speed);
+	if(tuple) {
+		temp = tuple->value->int32 * 100; //Slider moves in tenth of a second increments
+		if(watch_style == ORIGINAL_SECONDS) {
+			MiniAnimationTime = temp;
+		}
+		persist_write_int(MESSAGE_KEY_seconds_animation_speed, temp);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new seconds animation speed (%i).", temp);
+	} else if (watch_style == ORIGINAL_SECONDS && persist_exists(MESSAGE_KEY_seconds_animation_speed)) {
+		MiniAnimationTime = persist_read_int(MESSAGE_KEY_seconds_animation_speed);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded seconds animation speed from watch storage. (%i)", MiniAnimationTime);
+	} else if (watch_style == ORIGINAL_SECONDS) {
+		MiniAnimationTime = 500; //Default to half a second
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default seconds animation speed (%i). (No saved settings).", MiniAnimationTime);
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Completed processing config data");
 }
 
 void load_saved_config_options() {
@@ -118,113 +216,11 @@ void load_saved_config_options() {
 		APP_LOG(APP_LOG_LEVEL_DEBUG, "Using defaults as config data is from the future");	
 	}
 	
-	if (persist_exists(MESSAGE_KEY_watch_style)) {
-		watch_style = persist_read_int(MESSAGE_KEY_watch_style); 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded watch style from watch storage. (%i)", watch_style);
-		set_watch_style(true);
-	} else {
-		watch_style = 1; //Default to Original plus Date 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch style. (No saved settings).");
-	}
+	//Config is now up to date use handle_appmessage_receive to load the default values
+	DictionaryIterator *iter = NULL;
+	void *context = NULL;
+	handle_appmessage_receive(iter, context);
 	
-	if (persist_exists(MESSAGE_KEY_background_color)) {
-		BackgroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_background_color)); 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded background color from watch storage., (%X)", BackgroundColor.argb);
-	} else {
-		BackgroundColor = GColorBlack; //Default to black background color 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch background color. (No saved settings).");
-	}
-	
-	if (persist_exists(MESSAGE_KEY_foreground_color)) {
-		ForegroundColor = GColorFromHEX(persist_read_int(MESSAGE_KEY_foreground_color)); 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded foreground color from watch storage., (%X)", ForegroundColor.argb);
-	} else {
-		ForegroundColor = GColorWhite; //Default to white foreground color 
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default watch foreground color. (No saved settings).");
-	}	
-	
-	if (persist_exists(MESSAGE_KEY_big_animation_speed)) {
-		AnimationTime = persist_read_int(MESSAGE_KEY_big_animation_speed);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded big number animation speed from watch storage. (%i)", AnimationTime);
-	} else {
-		AnimationTime = 2000; //Default to 2 second animation speed
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default big number animation speed (%i). (No saved settings).", AnimationTime);
-	}
-	
-	if (watch_style == ORIGINAL_DATE && persist_exists(MESSAGE_KEY_date_animation_speed)) {
-		MiniAnimationTime = persist_read_int(MESSAGE_KEY_date_animation_speed);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded date animation speed from watch storage. (%i)", MiniAnimationTime);
-	} else if (watch_style == ORIGINAL_DATE) {
-		MiniAnimationTime = 4000; //Default to 4 second animation speed
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded seconds animation speed (%i). (No saved settings).", MiniAnimationTime);
-	}
-	
-	if (watch_style == ORIGINAL_SECONDS && persist_exists(MESSAGE_KEY_seconds_animation_speed)) {
-		MiniAnimationTime = persist_read_int(MESSAGE_KEY_seconds_animation_speed);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded seconds animation speed from watch storage. (%i)", MiniAnimationTime);
-	} else if (watch_style == ORIGINAL_SECONDS) {
-		MiniAnimationTime = 500; //Default to half a second
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded default seconds animation speed (%i). (No saved settings).", MiniAnimationTime);
-	}
-}
-
-void handle_appmessage_receive(DictionaryIterator *iter, void *context) {
-	// Read watch style preference
-	Tuple *tuple = dict_find(iter, MESSAGE_KEY_watch_style);
-	if(tuple) {
-		watch_style = atoi(tuple->value->cstring);
-		persist_write_int(MESSAGE_KEY_watch_style, atoi(tuple->value->cstring));
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Watch Style (%i).", watch_style);
-		set_watch_style(false);
-	}
-	// Read Background Color preference
-	tuple = dict_find(iter, MESSAGE_KEY_background_color);
-	if(tuple) {
-		BackgroundColor = GColorFromHEX(tuple->value->int32);
-		persist_write_int(MESSAGE_KEY_background_color, tuple->value->int32);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Background Color (%X).", BackgroundColor.argb);
-		window_set_background_color(window, BackgroundColor);
-	}
-	// Read Foreground Color preference
-	tuple = dict_find(iter, MESSAGE_KEY_foreground_color);
-	if(tuple) {
-		ForegroundColor = GColorFromHEX(tuple->value->int32);
-		persist_write_int(MESSAGE_KEY_foreground_color, tuple->value->int32);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new Foreground Color (%X).", ForegroundColor.argb);
-		layer_mark_dirty(window_get_root_layer(window));
-	}
-	// Read big number animation speed preference
-	tuple = dict_find(iter, MESSAGE_KEY_big_animation_speed);
-	if(tuple) {
-		AnimationTime = tuple->value->int32 * 500; //Slider moves in half second increments
-		persist_write_int(MESSAGE_KEY_big_animation_speed, AnimationTime);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new big number animation speed (%i).", AnimationTime);
-	}
-	
-	int temp;
-	// Read date animation speed preference
-	tuple = dict_find(iter, MESSAGE_KEY_date_animation_speed);
-	if(tuple) {
-		temp = tuple->value->int32 * 500; //Slider moves in half second increments
-		if(watch_style == ORIGINAL_DATE) {
-			MiniAnimationTime = temp;
-		}
-		persist_write_int(MESSAGE_KEY_date_animation_speed, temp);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new date animation speed (%i).", temp);
-	}
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Completed processing config data");
-	
-	// Read seconds animation speed preference
-	tuple = dict_find(iter, MESSAGE_KEY_seconds_animation_speed);
-	if(tuple) {
-		temp = tuple->value->int32 * 100; //Slider moves in tenth of a second increments
-		if(watch_style == ORIGINAL_SECONDS) {
-			MiniAnimationTime = temp;
-		}
-		persist_write_int(MESSAGE_KEY_seconds_animation_speed, temp);
-		APP_LOG(APP_LOG_LEVEL_DEBUG, "Saved new seconds animation speed (%i).", temp);
-	}
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Completed processing config data");
 }
 
 /* fill_layer ensures that a layer is always filled with the ForegroundColor */
@@ -587,6 +583,35 @@ static void handle_deinit(void) {
   	// Stop any animation in progress
   	animation_unschedule_all();
 
+	//Lots of memory freeing
+	for (int i = 0; i < 4; i++) {
+		layer_destroy(quadrants[i].layer);
+		for (int j = 0; j < 2; j++) {
+			layer_destroy(quadrants[i].points[j]);
+		}
+		for (int j = 0; j < 8; j++) {
+			layer_destroy(quadrants[i].segments[j]);
+		}
+		for (int j = 0; j < 8; j++) {
+			property_animation_destroy(quadrants[i].animations[j]);
+		}
+	}
+	for (int i = 0; i < 2; i++) {
+		layer_destroy(miniquadrants[i].layer);
+		for (int j = 0; j < 2; j++) {
+			layer_destroy(miniquadrants[i].points[j]);
+		}
+		for (int j = 0; j < 8; j++) {
+			layer_destroy(miniquadrants[i].segments[j]);
+		}
+		for (int j = 0; j < 8; j++) {
+			property_animation_destroy(miniquadrants[i].animations[j]);
+		}
+	}	
+
+	// Destroy cross Layer
+  	layer_destroy(cross);
+	
 	// Destroy main Window
   	window_destroy(window);
 }
