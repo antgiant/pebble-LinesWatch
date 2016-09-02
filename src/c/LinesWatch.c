@@ -31,11 +31,11 @@ typedef struct {
     GRect visible;
     GRect invisible;
 } Segment;
-GRect Points[2], MiniPoints[2];
 Segment Segments[8], MiniSegments[8];
 /* Other globals */
 Window *window;
 Layer *cross;
+GRect Points[2], MiniPoints[2];
 time_t current_time;
 struct tm *t;
 GColor BackgroundColor, ForegroundColor;
@@ -51,8 +51,73 @@ bool first_run = true;
 /*******************/
 /* GENERAL PURPOSE */
 /*******************/
+GRect set_screen_size() {
+	/* Set Global Screen Size "Constants" */
+	GRect bounds = layer_get_unobstructed_bounds(window_get_root_layer(window));
+	screenWidth = bounds.size.w;
+	screenHeight = bounds.size.h;
+	thickLine = (screenHeight*.02) + 1;
+	thinLine = (screenHeight*.01) + 1;
+	quadrantWidth = (screenWidth-thickLine)/2;
+	quadrantHeight = (screenHeight-thickLine)/2;
+	miniQuadrantWidth = (screenWidth-thickLine)/6;
+	miniQuadrantHeight = (screenHeight-thickLine)/6;
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Constants");
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenWidth = %i", screenWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenHeight = %i", screenHeight);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "thickLine = %i", thickLine);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "thinLine = %i", thinLine);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantWidth = %i", quadrantWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantHeight = %i", quadrantHeight);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantWidth = %i", miniQuadrantWidth);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantHeight = %i", miniQuadrantHeight);
+
+	/* Quadrant Animation Constants */
+    Points[0] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.31), thickLine, thickLine);
+    Points[1] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.65), thickLine, thickLine);
+    Segments[0].visible = GRect(Points[0].origin.x - thickLine, 0, thickLine, Points[0].origin.y + thickLine);
+    Segments[0].invisible = GRect(Points[0].origin.x - thickLine, Points[0].origin.y + thickLine, thickLine, 0);
+    Segments[1].visible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, Points[0].origin.y + thickLine);
+    Segments[1].invisible = GRect(Points[0].origin.x, Points[1].origin.y + thickLine, thickLine, 0);
+    Segments[2].visible = GRect(Points[0].origin.x, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[2].invisible = GRect(Points[0].origin.x + thickLine, Points[1].origin.y, 0, thickLine);
+    Segments[3].visible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, Points[1].origin.y - Points[0].origin.y);
+    Segments[3].invisible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, 0);
+    Segments[4].visible = GRect(0, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[4].invisible = GRect(Points[0].origin.x, Points[1].origin.y, 0, thickLine);
+    Segments[5].visible = GRect(Points[0].origin.x, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[5].invisible = GRect(Points[0].origin.x + thickLine, Points[0].origin.y, 0, thickLine);
+    Segments[6].visible = GRect(Points[0].origin.x, 0, thickLine, Points[0].origin.y + thickLine);
+    Segments[6].invisible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, 0);
+    Segments[7].visible = GRect(0, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
+    Segments[7].invisible = GRect(Points[0].origin.x, Points[0].origin.y, 0, thickLine);
+
+	/* Mini Quadrant Animation Constants */
+	MiniPoints[0] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.31), thinLine, thinLine);
+    MiniPoints[1] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.65), thinLine, thinLine);
+    MiniSegments[0].visible = GRect(MiniPoints[0].origin.x - thinLine, 0, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[0].invisible = GRect(MiniPoints[0].origin.x - thinLine, MiniPoints[0].origin.y + thinLine, thinLine, 0);
+    MiniSegments[1].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[1].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y + thinLine, thinLine, 0);
+    MiniSegments[2].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[2].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[1].origin.y, 0, thinLine);
+    MiniSegments[3].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, MiniPoints[1].origin.y - MiniPoints[0].origin.y);
+    MiniSegments[3].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, 0);
+    MiniSegments[4].visible = GRect(0, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[4].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, 0, thinLine);
+    MiniSegments[5].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[5].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[0].origin.y, 0, thinLine);
+    MiniSegments[6].visible = GRect(MiniPoints[0].origin.x, 0, thinLine, MiniPoints[0].origin.y + thinLine);
+    MiniSegments[6].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, 0);
+    MiniSegments[7].visible = GRect(0, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
+    MiniSegments[7].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, 0, thinLine);
+
+	return bounds;
+}
+
 //Function declaration so that next function can use it.
 void handle_tick(struct tm *tickE, TimeUnits units_changed);
+void quadrant_init(Quadrant *quadrant, GRect coordinates, bool isBigQuadrant);
 
 void set_watch_style(){
 	switch(watch_style) {
@@ -89,6 +154,53 @@ void set_watch_style(){
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Changed watch style. (%i)", watch_style);
 }
 
+static void screen_size_changed(void *context) {
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "----Begin Screen Size Change----");
+  	// Stop any animation in progress to prevent race conditions
+  	animation_unschedule_all();
+	
+	//Update Screen Size
+	set_screen_size();
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Screen Sizes Updated");
+
+	//Wipe record of currently displayed segments to force redraw
+	quadrants[0].currentSegments = 0;
+	quadrants[1].currentSegments = 0;
+	quadrants[2].currentSegments = 0;
+	quadrants[3].currentSegments = 0;
+	miniquadrants[0].currentSegments = 0;
+	miniquadrants[1].currentSegments = 0;
+
+	//Redrawn center points in the correct spot
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 2; j++) {
+			layer_set_frame(quadrants[i].points[j], Points[j]);
+		}
+	}
+	for (int i = 0; i < 2; i++) {
+		for (int j = 0; j < 2; j++) {
+			layer_set_frame(miniquadrants[i].points[j], MiniPoints[j]);
+		}
+	}
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Center Points Moved");
+
+    /* Update all the layer frames */
+	layer_set_frame(quadrants[0].layer, GRect(0, 0, quadrantWidth, quadrantHeight));
+    layer_set_frame(quadrants[1].layer, GRect(quadrantWidth + thickLine, 0, quadrantWidth, quadrantHeight));
+    layer_set_frame(quadrants[2].layer, GRect(0, quadrantHeight + thickLine, quadrantWidth, quadrantHeight));
+    layer_set_frame(quadrants[3].layer, GRect(quadrantWidth + thickLine, quadrantHeight + thickLine, quadrantWidth, quadrantHeight));
+    layer_set_frame(miniquadrants[0].layer, GRect(quadrantWidth - miniQuadrantWidth + thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight));
+    layer_set_frame(miniquadrants[1].layer, GRect(quadrantWidth + thickLine - (thinLine/2), quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight));
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Quadrants Moved");
+
+	//Force a screen refresh
+	time_t now = time(NULL);
+	struct tm *tick_time = localtime(&now);
+	TimeUnits units_changed = 0;
+	handle_tick(tick_time, units_changed);
+	
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "----End Screen Size Change----");
+}
 void handle_appmessage_receive(DictionaryIterator *iter, void *context) {
 	// Read watch style preference
 	Tuple *tuple = dict_find(iter, MESSAGE_KEY_watch_style);
@@ -482,66 +594,13 @@ void handle_init(void) {
 	window_stack_push(window, true /* Animated */);
     window_set_background_color(window, BackgroundColor);
     
-    /* Set Constants*/
-	GRect bounds = layer_get_bounds(window_get_root_layer(window));
-	screenWidth = bounds.size.w;
-	screenHeight = bounds.size.h;
-	thickLine = (screenHeight*.02) + 1;
-	thinLine = (screenHeight*.01) + 1;
-	quadrantWidth = (screenWidth-thickLine)/2;
-	quadrantHeight = (screenHeight-thickLine)/2;
-	miniQuadrantWidth = (screenWidth-thickLine)/6;
-	miniQuadrantHeight = (screenHeight-thickLine)/6;
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Constants");
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenWidth = %i", screenWidth);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "screenHeight = %i", screenHeight);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "thickLine = %i", thickLine);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "thinLine = %i", thinLine);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantWidth = %i", quadrantWidth);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "quadrantHeight = %i", quadrantHeight);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantWidth = %i", miniQuadrantWidth);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "miniQuadrantHeight = %i", miniQuadrantHeight);
-    
-	/* Quadrant Animation Constants */
-    Points[0] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.31), thickLine, thickLine);
-    Points[1] = GRect(quadrantWidth/2 - thickLine/2, (quadrantHeight*.65), thickLine, thickLine);
-    Segments[0].visible = GRect(Points[0].origin.x - thickLine, 0, thickLine, Points[0].origin.y + thickLine);
-    Segments[0].invisible = GRect(Points[0].origin.x - thickLine, Points[0].origin.y + thickLine, thickLine, 0);
-    Segments[1].visible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, Points[0].origin.y + thickLine);
-    Segments[1].invisible = GRect(Points[0].origin.x, Points[1].origin.y + thickLine, thickLine, 0);
-    Segments[2].visible = GRect(Points[0].origin.x, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
-    Segments[2].invisible = GRect(Points[0].origin.x + thickLine, Points[1].origin.y, 0, thickLine);
-    Segments[3].visible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, Points[1].origin.y - Points[0].origin.y);
-    Segments[3].invisible = GRect(Points[0].origin.x, Points[1].origin.y, thickLine, 0);
-    Segments[4].visible = GRect(0, Points[1].origin.y, Points[0].origin.x + thickLine, thickLine);
-    Segments[4].invisible = GRect(Points[0].origin.x, Points[1].origin.y, 0, thickLine);
-    Segments[5].visible = GRect(Points[0].origin.x, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
-    Segments[5].invisible = GRect(Points[0].origin.x + thickLine, Points[0].origin.y, 0, thickLine);
-    Segments[6].visible = GRect(Points[0].origin.x, 0, thickLine, Points[0].origin.y + thickLine);
-    Segments[6].invisible = GRect(Points[0].origin.x, Points[0].origin.y, thickLine, 0);
-    Segments[7].visible = GRect(0, Points[0].origin.y, Points[0].origin.x + thickLine, thickLine);
-    Segments[7].invisible = GRect(Points[0].origin.x, Points[0].origin.y, 0, thickLine);
-
-	/* Mini Quadrant Animation Constants */
-	MiniPoints[0] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.31), thinLine, thinLine);
-    MiniPoints[1] = GRect(miniQuadrantWidth/2 - thinLine/2, (miniQuadrantHeight*.65), thinLine, thinLine);
-    MiniSegments[0].visible = GRect(MiniPoints[0].origin.x - thinLine, 0, thinLine, MiniPoints[0].origin.y + thinLine);
-    MiniSegments[0].invisible = GRect(MiniPoints[0].origin.x - thinLine, MiniPoints[0].origin.y + thinLine, thinLine, 0);
-    MiniSegments[1].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, MiniPoints[0].origin.y + thinLine);
-    MiniSegments[1].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y + thinLine, thinLine, 0);
-    MiniSegments[2].visible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
-    MiniSegments[2].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[1].origin.y, 0, thinLine);
-    MiniSegments[3].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, MiniPoints[1].origin.y - MiniPoints[0].origin.y);
-    MiniSegments[3].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, thinLine, 0);
-    MiniSegments[4].visible = GRect(0, MiniPoints[1].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
-    MiniSegments[4].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[1].origin.y, 0, thinLine);
-    MiniSegments[5].visible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
-    MiniSegments[5].invisible = GRect(MiniPoints[0].origin.x + thinLine, MiniPoints[0].origin.y, 0, thinLine);
-    MiniSegments[6].visible = GRect(MiniPoints[0].origin.x, 0, thinLine, MiniPoints[0].origin.y + thinLine);
-    MiniSegments[6].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, thinLine, 0);
-    MiniSegments[7].visible = GRect(0, MiniPoints[0].origin.y, MiniPoints[0].origin.x + thinLine, thinLine);
-    MiniSegments[7].invisible = GRect(MiniPoints[0].origin.x, MiniPoints[0].origin.y, 0, thinLine);
-	
+	//Set Screen Size & Get Notified of Changes to it
+	GRect bounds = set_screen_size();
+	 UnobstructedAreaHandlers handlers = {
+    	.did_change = screen_size_changed
+  	};
+  	unobstructed_area_service_subscribe(handlers, NULL);
+		
     /* Cross */
 	cross = layer_create(bounds);
 	layer_set_update_proc(cross, draw_cross);
