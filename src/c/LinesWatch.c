@@ -118,6 +118,7 @@ GRect set_screen_size() {
 //Function declaration so that next function can use it.
 void handle_tick(struct tm *tickE, TimeUnits units_changed);
 void quadrant_init(Quadrant *quadrant, GRect coordinates, bool isBigQuadrant);
+void draw_cross(Layer *layer, GContext *ctx);
 
 void set_watch_style(){
 	switch(watch_style) {
@@ -193,6 +194,11 @@ static void screen_size_changed(void *context) {
     layer_set_frame(miniquadrants[1].layer, GRect(quadrantWidth + thickLine - (thinLine/2), quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight));
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Quadrants Moved");
 
+	//Mark background cross as needing to be redrawn
+//	draw_cross(window_get_root_layer(window), context);
+	layer_mark_dirty(cross);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updated Cross Drawing");
+	
 	//Force a screen refresh
 	time_t now = time(NULL);
 	struct tm *tick_time = localtime(&now);
