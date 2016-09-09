@@ -161,7 +161,7 @@ static void screen_size_changed(void *context) {
   	animation_unschedule_all();
 	
 	//Update Screen Size
-	set_screen_size();
+	GRect bounds = set_screen_size();
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Screen Sizes Updated");
 
 	//Wipe record of currently displayed segments to force redraw
@@ -195,9 +195,9 @@ static void screen_size_changed(void *context) {
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Quadrants Moved");
 
 	//Mark background cross as needing to be redrawn
-//	draw_cross(window_get_root_layer(window), context);
+	layer_set_frame(cross, bounds);
 	layer_mark_dirty(cross);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Updated Cross Drawing");
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Update Background 'Cross'");
 	
 	//Force a screen refresh
 	time_t now = time(NULL);
