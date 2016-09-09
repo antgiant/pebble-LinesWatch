@@ -172,6 +172,11 @@ static void screen_size_changed(void *context) {
 	miniquadrants[0].currentSegments = 0;
 	miniquadrants[1].currentSegments = 0;
 
+	//Mark background cross as needing to be redrawn
+	layer_set_frame(cross, bounds);
+	layer_mark_dirty(cross);
+	APP_LOG(APP_LOG_LEVEL_DEBUG, "Update Background 'Cross'");
+	
 	//Redrawn center points in the correct spot
 	for (int i = 0; i < 4; i++) {
 		for (int j = 0; j < 2; j++) {
@@ -194,11 +199,6 @@ static void screen_size_changed(void *context) {
     layer_set_frame(miniquadrants[1].layer, GRect(quadrantWidth + thickLine - (thinLine/2), quadrantHeight - (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth, miniQuadrantHeight));
 	APP_LOG(APP_LOG_LEVEL_DEBUG, "Quadrants Moved");
 
-	//Mark background cross as needing to be redrawn
-	layer_set_frame(cross, bounds);
-	layer_mark_dirty(cross);
-	APP_LOG(APP_LOG_LEVEL_DEBUG, "Update Background 'Cross'");
-	
 	//Force a screen refresh
 	time_t now = time(NULL);
 	struct tm *tick_time = localtime(&now);
