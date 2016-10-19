@@ -379,8 +379,8 @@ void draw_cross(Layer *layer, GContext *ctx) {
 			graphics_fill_rect(ctx, GRect(screenWidth - quadrantWidth + miniQuadrantWidth - thinLine, quadrantHeight - (miniQuadrantHeight/2) + thinLine, thinLine, miniQuadrantHeight), 0, GCornerNone);
 
 			//Smaller Horizontal Lines
-			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
-			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thickLine, thinLine), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight - (miniQuadrantHeight/2), miniQuadrantWidth*2 + thinLine*2, thinLine), 0, GCornerNone);
+			graphics_fill_rect(ctx, GRect(quadrantWidth - miniQuadrantWidth, quadrantHeight + (miniQuadrantHeight/2) + thinLine, miniQuadrantWidth*2 + thinLine*2, thinLine), 0, GCornerNone);
 			break;
 	}
 }
@@ -602,7 +602,7 @@ void handle_init(void) {
     
 	//Set Screen Size & Get Notified of Changes to it
 	GRect bounds = set_screen_size();
-	 UnobstructedAreaHandlers handlers = {
+	UnobstructedAreaHandlers handlers = {
     	.did_change = screen_size_changed
   	};
   	unobstructed_area_service_subscribe(handlers, NULL);
